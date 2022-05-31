@@ -1,0 +1,13 @@
+start simple9
+(y (1))
+(x (0))
+
+(x (y > 0 : 10 : 20))
+(print y)
+(print x)
+
+(x (y = 0 : 10 : 20))
+(print y)
+(print x)
+
+end

@@ -1,0 +1,8 @@
+start simple8
+(y (-1))
+(z (-1.5))
+(y (y abs))
+(print y)
+(z (z abs))
+(print z)
+end
