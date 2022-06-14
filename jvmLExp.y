@@ -46,13 +46,18 @@ ST_TABLE_TYPE symbolTable;
 %token <lexical> T_real
 %token '('
 %token ')'
+%token ':'
 %token <lexical> T_id
 %token <lexical> T_FuncUnary
 %token T_start "start"
 %token T_end "end"
 %token T_print "print"
+%token T_int "int"
+%token T_float "float"
+%token T_abs "abs"
+%token T_comp_op "comp_op"
 
-
+%nonassoc '+' '*' //isws oxi nonassoc?
 
 %%
 program: "start" T_id {create_preample($2); symbolTable=NULL; }
@@ -73,7 +78,7 @@ stmt:  asmt	{/* nothing */}
 printcmd: "print" expr  {
 			   	insertINSTRUCTION("getstatic java/lang/System/out Ljava/io/PrintStream;");
 			    insertINSTRUCTION("swap");
-          insertINVOKEVITRUAL("java/io/PrintStream/println",$2.type,type_void);
+          // insertINVOKEVITRUAL("java/io/PrintStream/println",$2.type,type_void);
 				}
 		   	;
 
@@ -83,7 +88,20 @@ asmt: T_id expr
 		}
 	;
 
+expr: T_num 
+  | T_real
+  | T_id
+  | expr expr '+' {}
+  | expr expr '*' {}
+  | expr '+' '+' {}
+  | '+' '+' expr {}
+  | "int" expr {}
+  | "float" expr {}
+  | expr "abs" {}
+  | bool ':' expr ':' expr {}
+  | '(' expr ')';
 
+bool: expr "comp_op" expr {};
 
 %%
 
