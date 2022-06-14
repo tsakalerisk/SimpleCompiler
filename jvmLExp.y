@@ -57,7 +57,9 @@ ST_TABLE_TYPE symbolTable;
 %token T_abs "abs"
 %token T_comp_op "comp_op"
 
-%nonassoc '+' '*' //isws oxi nonassoc?
+%type<se> expr
+
+%left '+' '*'
 
 %%
 program: "start" T_id {create_preample($2); symbolTable=NULL; }
@@ -78,28 +80,58 @@ stmt:  asmt	{/* nothing */}
 printcmd: "print" expr  {
 			   	insertINSTRUCTION("getstatic java/lang/System/out Ljava/io/PrintStream;");
 			    insertINSTRUCTION("swap");
-          // insertINVOKEVITRUAL("java/io/PrintStream/println",$2.type,type_void);
+          insertINVOKEVITRUAL("java/io/PrintStream/println",$2.type,type_void);
 				}
 		   	;
 
 asmt: T_id expr
     {
-			/* Add code here*/
+			if (!lookup(symbolTable,$1))
+        addvar(&symbolTable,$1,$2.type);
+      else
+		    typeDefinition(lookup_type(symbolTable,$1), $2.type);
+		  insertSTORE($2.type,lookup_position(symbolTable,$1));
 		}
 	;
 
-expr: T_num 
-  | T_real
-  | T_id
-  | expr expr '+' {}
-  | expr expr '*' {}
-  | expr '+' '+' {}
-  | '+' '+' expr {}
-  | "int" expr {}
-  | "float" expr {}
-  | expr "abs" {}
+expr: T_num {$$.type = type_integer; pushInteger(atoi($1));}
+  | T_real {$$.type = type_real; insertLDC($1);}
+  | T_id {if (!($$.type = lookup_type(symbolTable,$1))) {
+            ERR_VAR_MISSING($1,line);
+          }
+			    insertLOAD($$.type,lookup_position(symbolTable,$1));}
+  | expr expr '+' {$$.type = typeDefinition($1.type, $2.type);
+      insertOPERATION($$.type,"add");}
+  | expr expr '*' {$$.type = typeDefinition($1.type, $2.type);
+      insertOPERATION($$.type,"mul");}
+  | T_id '+' '+' {$$.type = lookup_type(symbolTable,$1);;
+      if ($$.type == type_integer) {
+        int position = lookup_position(symbolTable,$1);
+        insertLOAD($$.type, position);
+        insertIINC(position, 1);
+      }}
+  | '+' '+' T_id {$$.type = lookup_type(symbolTable,$3);
+      if ($$.type == type_integer) {
+        int position = lookup_position(symbolTable,$3);
+        insertIINC(position, 1);
+        insertLOAD($$.type, position);
+      }}
+  | "int" expr {$$.type = type_integer;
+      if ($2.type == type_integer)
+        printf("Warning: value is already int, in line %d.\n",line);
+      else
+        insertOPERATION($2.type,"2i");}
+  | "float" expr {$$.type = type_real;
+      if ($2.type == type_real)
+        printf("Warning: value is already real, in line %d.\n",line);
+      else
+        insertOPERATION($2.type,"2f");}
+  | expr "abs" {$$.type = $1.type;
+    insertINVOKESTATIC("java/lang/Math/abs",$1.type,$1.type);}
   | bool ':' expr ':' expr {}
-  | '(' expr ')';
+  | '(' expr ')' {$$.type = $2.type;};
+
+
 
 bool: expr "comp_op" expr {};
 
