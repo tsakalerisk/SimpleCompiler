@@ -134,9 +134,12 @@ expr: T_num {$$.type = type_integer; pushInteger(atoi($1));}
       insertLabel(Label());}
     expr ':' {
       backpatch($1.falseLbl,currentLabel());
+      $1.falseLbl = makelist(nextInstruction()); //Edw isws 8a htan kalo na mhn exoume $1.falseLbl, alla kati allo px elseLbl???
+      insertGOTO(UNKNOWN);
       insertLabel(Label());}
     expr {
       $$.type = typeDefinition($4.type,$7.type);
+      backpatch($1.falseLbl,currentLabel()); //Edw isws 8a htan kalo na mhn exoume $1.falseLbl, alla kati allo px elseLbl???
       insertLabel(Label());
     }
   | '(' expr ')' {$$.type = $2.type;};
