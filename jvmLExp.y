@@ -55,9 +55,10 @@ ST_TABLE_TYPE symbolTable;
 %token T_int "int"
 %token T_float "float"
 %token T_abs "abs"
-%token T_comp_op "comp_op"
 
 %type<se> expr
+%type<condLabels> bool
+%type<relopIndex> relop
 
 %left '+' '*'
 
@@ -128,12 +129,35 @@ expr: T_num {$$.type = type_integer; pushInteger(atoi($1));}
         insertOPERATION($2.type,"2f");}
   | expr "abs" {$$.type = $1.type;
     insertINVOKESTATIC("java/lang/Math/abs",$1.type,$1.type);}
-  | bool ':' expr ':' expr {}
+  | bool ':' {
+      backpatch($1.trueLbl,currentLabel());
+      insertLabel(Label());}
+    expr ':' {
+      backpatch($1.falseLbl,currentLabel());
+      insertLabel(Label());}
+    expr {
+      $$.type = typeDefinition($4.type,$7.type);
+      insertLabel(Label());
+    }
   | '(' expr ')' {$$.type = $2.type;};
 
+bool: expr relop expr {
+  typeDefinition($1.type, $3.type);
+	if ($1.type == type_integer) {
+    $$.trueLbl = makelist(nextInstruction());
+    insertICMPOP($2,UNKNOWN);
+	}
+	if ($1.type == type_real) {
+	  insertINSTRUCTION("fcmpl");
+    $$.trueLbl = makelist(nextInstruction());
+    insertIFOP($2,UNKNOWN);
+	}
+  $$.falseLbl = makelist(nextInstruction());
+	insertGOTO(UNKNOWN);};
 
-
-bool: expr "comp_op" expr {};
+relop: '>' 	{$$=OP_GT;}
+	| '<' {$$=OP_LT;}
+	| '=' {$$=OP_EQ;};
 
 %%
 

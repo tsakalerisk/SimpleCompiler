@@ -13,7 +13,6 @@ D [0-9]
 LETTER [a-zA-Z]
 VARIABLE {LETTER}({LETTER}|{D}|_)*
 FLOAT {D}+\.{D}*
-COMP_OP >|=|<
 newline \n|\x0A|\x0D\x0A
 %%
 "start" {return T_start;}
@@ -26,11 +25,13 @@ newline \n|\x0A|\x0D\x0A
 "(" {return '(';}
 ")" {return ')';}
 ":" {return ':';}
+"<" {return '<';}
+"=" {return '=';}
+">" {return '>';}
 
 ("-")?{D}+ {yylval.lexical = strdup(yytext);  return T_num;}
 ("-")?{FLOAT} {yylval.lexical = strdup(yytext); return T_real;}
 {VARIABLE} {yylval.lexical = strdup(yytext); return T_id;}
-{COMP_OP} {yylval.lexical = strdup(yytext); return T_comp_op;}
 
 "+" {return '+';}
 "*" {return '*';}
