@@ -36,6 +36,7 @@ ST_TABLE_TYPE symbolTable;
   struct {
        NUMBER_LIST_TYPE trueLbl;
        NUMBER_LIST_TYPE falseLbl;
+       NUMBER_LIST_TYPE nextLbl;
     } condLabels;
 
 }
@@ -97,49 +98,67 @@ asmt: T_id expr
 
 expr: T_num {$$.type = type_integer; pushInteger(atoi($1));}
   | T_real {$$.type = type_real; insertLDC($1);}
-  | T_id {if (!($$.type = lookup_type(symbolTable,$1))) {
-            ERR_VAR_MISSING($1,line);
-          }
-			    insertLOAD($$.type,lookup_position(symbolTable,$1));}
-  | expr expr '+' {$$.type = typeDefinition($1.type, $2.type);
-      insertOPERATION($$.type,"add");}
-  | expr expr '*' {$$.type = typeDefinition($1.type, $2.type);
-      insertOPERATION($$.type,"mul");}
-  | T_id '+' '+' {$$.type = lookup_type(symbolTable,$1);;
+  | T_id {
+      if (!($$.type = lookup_type(symbolTable,$1))) {
+        ERR_VAR_MISSING($1,line);
+      }
+		  insertLOAD($$.type,lookup_position(symbolTable,$1));
+    }
+  | expr expr '+' {
+      $$.type = typeDefinition($1.type, $2.type);
+      insertOPERATION($$.type,"add");
+    }
+  | expr expr '*' {
+      $$.type = typeDefinition($1.type, $2.type);
+      insertOPERATION($$.type,"mul");
+    }
+  | T_id '+' '+' {
+      $$.type = lookup_type(symbolTable,$1);
       if ($$.type == type_integer) {
         int position = lookup_position(symbolTable,$1);
         insertLOAD($$.type, position);
         insertIINC(position, 1);
-      }}
-  | '+' '+' T_id {$$.type = lookup_type(symbolTable,$3);
+      }
+    }
+  | '+' '+' T_id {
+      $$.type = lookup_type(symbolTable,$3);
       if ($$.type == type_integer) {
         int position = lookup_position(symbolTable,$3);
         insertIINC(position, 1);
         insertLOAD($$.type, position);
-      }}
-  | "int" expr {$$.type = type_integer;
+      }
+    }
+  | "int" expr {
+      $$.type = type_integer;
       if ($2.type == type_integer)
         printf("Warning: value is already int, in line %d.\n",line);
       else
-        insertOPERATION($2.type,"2i");}
-  | "float" expr {$$.type = type_real;
+        insertOPERATION($2.type,"2i");
+    }
+  | "float" expr {
+      $$.type = type_real;
       if ($2.type == type_real)
         printf("Warning: value is already real, in line %d.\n",line);
       else
-        insertOPERATION($2.type,"2f");}
-  | expr "abs" {$$.type = $1.type;
-    insertINVOKESTATIC("java/lang/Math/abs",$1.type,$1.type);}
+        insertOPERATION($2.type,"2f");
+    }
+  | expr "abs" {
+      $$.type = $1.type;
+      insertINVOKESTATIC("java/lang/Math/abs",$1.type,$1.type);
+    }
   | bool ':' {
       backpatch($1.trueLbl,currentLabel());
-      insertLabel(Label());}
+      insertLabel(Label());
+    }
     expr ':' {
       backpatch($1.falseLbl,currentLabel());
-      $1.falseLbl = makelist(nextInstruction()); //Edw isws 8a htan kalo na mhn exoume $1.falseLbl, alla kati allo px elseLbl???
+      $1.nextLbl = makelist(nextInstruction());
       insertGOTO(UNKNOWN);
-      insertLabel(Label());}
+      insertLabel(Label());
+    }
     expr {
       $$.type = typeDefinition($4.type,$7.type);
-      backpatch($1.falseLbl,currentLabel()); //Edw isws 8a htan kalo na mhn exoume $1.falseLbl, alla kati allo px elseLbl???
+      backpatch($1.nextLbl,currentLabel());
       insertLabel(Label());
     }
   | '(' expr ')' {$$.type = $2.type;};
