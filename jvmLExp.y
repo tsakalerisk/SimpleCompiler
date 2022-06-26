@@ -30,8 +30,8 @@ ST_TABLE_TYPE symbolTable;
 %union{
    char *lexical;
    struct {
-	    ParType type;
-	    char * place;} se;
+      ParType type;
+      char * place;} se;
   RelationType relopIndex;
   struct {
        NUMBER_LIST_TYPE trueLbl;
@@ -61,40 +61,37 @@ ST_TABLE_TYPE symbolTable;
 %type<condLabels> bool
 %type<relopIndex> relop
 
-%left '+' '*'
+%left '+' '-' '*' '/'
 
 %%
 program: "start" T_id {create_preample($2); symbolTable=NULL; }
-			stmts "end"
-			{insertINSTRUCTION("return");
+      stmts "end"
+      {insertINSTRUCTION("return");
        insertINSTRUCTION(".end method\n");}
-	;
+  ;
 /* A simple (very) definition of a list of statements.*/
 stmts:  '(' stmt ')' {/* nothing */}
      |  '(' stmt ')' stmts 	{/* nothing */}
      |  '(' error ')' stmts
-	;
+  ;
 
 stmt:  asmt	{/* nothing */}
-	| printcmd {/* nothing */}
-	;
+  | printcmd {/* nothing */}
+  ;
 
 printcmd: "print" expr  {
-			   	insertINSTRUCTION("getstatic java/lang/System/out Ljava/io/PrintStream;");
-			    insertINSTRUCTION("swap");
-          insertINVOKEVITRUAL("java/io/PrintStream/println",$2.type,type_void);
-				}
-		   	;
+      insertINSTRUCTION("getstatic java/lang/System/out Ljava/io/PrintStream;");
+      insertINSTRUCTION("swap");
+      insertINVOKEVITRUAL("java/io/PrintStream/println",$2.type,type_void);
+    };
 
-asmt: T_id expr
-    {
-			if (!lookup(symbolTable,$1))
-        addvar(&symbolTable,$1,$2.type);
-      else
-		    typeDefinition(lookup_type(symbolTable,$1), $2.type);
-		  insertSTORE($2.type,lookup_position(symbolTable,$1));
-		}
-	;
+asmt: T_id expr {
+  if (!lookup(symbolTable,$1))
+    addvar(&symbolTable,$1,$2.type);
+  else
+    typeDefinition(lookup_type(symbolTable,$1), $2.type);
+  insertSTORE($2.type,lookup_position(symbolTable,$1));
+};
 
 expr: T_num {$$.type = type_integer; pushInteger(atoi($1));}
   | T_real {$$.type = type_real; insertLDC($1);}
@@ -102,15 +99,23 @@ expr: T_num {$$.type = type_integer; pushInteger(atoi($1));}
       if (!($$.type = lookup_type(symbolTable,$1))) {
         ERR_VAR_MISSING($1,line);
       }
-		  insertLOAD($$.type,lookup_position(symbolTable,$1));
+      insertLOAD($$.type,lookup_position(symbolTable,$1));
     }
   | expr expr '+' {
       $$.type = typeDefinition($1.type, $2.type);
       insertOPERATION($$.type,"add");
     }
+  | expr expr '-' {
+      $$.type = typeDefinition($1.type, $2.type);
+      insertOPERATION($$.type,"sub");
+    }
   | expr expr '*' {
       $$.type = typeDefinition($1.type, $2.type);
       insertOPERATION($$.type,"mul");
+    }
+  | expr expr '/' {
+      $$.type = typeDefinition($1.type, $2.type);
+      insertOPERATION($$.type,"div");
     }
   | T_id '+' '+' {
       $$.type = lookup_type(symbolTable,$1);
@@ -165,21 +170,21 @@ expr: T_num {$$.type = type_integer; pushInteger(atoi($1));}
 
 bool: expr relop expr {
   typeDefinition($1.type, $3.type);
-	if ($1.type == type_integer) {
+  if ($1.type == type_integer) {
     $$.trueLbl = makelist(nextInstruction());
     insertICMPOP($2,UNKNOWN);
-	}
-	if ($1.type == type_real) {
-	  insertINSTRUCTION("fcmpl");
+  }
+  if ($1.type == type_real) {
+    insertINSTRUCTION("fcmpl");
     $$.trueLbl = makelist(nextInstruction());
     insertIFOP($2,UNKNOWN);
-	}
+  }
   $$.falseLbl = makelist(nextInstruction());
-	insertGOTO(UNKNOWN);};
+  insertGOTO(UNKNOWN);};
 
 relop: '>' 	{$$=OP_GT;}
-	| '<' {$$=OP_LT;}
-	| '=' {$$=OP_EQ;};
+  | '<' {$$=OP_LT;}
+  | '=' {$$=OP_EQ;};
 
 %%
 

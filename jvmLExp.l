@@ -34,7 +34,9 @@ newline \n|\x0A|\x0D\x0A
 {VARIABLE} {yylval.lexical = strdup(yytext); return T_id;}
 
 "+" {return '+';}
+"-" {return '-';}
 "*" {return '*';}
+"/" {return '/';}
 
 {newline}  { line++;}
 [ \t] { /* nothing */ }
