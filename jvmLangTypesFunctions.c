@@ -7,7 +7,7 @@
 extern FILE *yyout;
 extern int yyerror(const char *);
 
-#define MAX_INST_LEN 200
+
 /* ********************************************************************************** */
 /* Function Definitions for Syntax and Semantic Analysis */
 /* Type inferece regarding arithmetic expressions. Strong typing

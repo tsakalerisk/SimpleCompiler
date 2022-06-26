@@ -11,9 +11,11 @@ int yylex();
 /* Error Related Functions and Macros*/
 int yyerror(const char *);
 int no_errors;
+
+void insertFINC(int position, double value);
 /* Error Messages Macros*/
 #define ERR_VAR_DECL(VAR,LINE) fprintf(stderr,"Variable :: %s on line %d. ",VAR,LINE); yyerror("Var already defined")
-#define ERR_VAR_MISSING(VAR,LINE) fprintf(stderr,"Variable %s NOT declared, n line %d.",VAR,LINE); yyerror("Variable Declation fault")
+#define ERR_VAR_MISSING(VAR,LINE) fprintf(stderr,"Variable %s NOT declared, n line %d.",VAR,LINE); yyerror("Variable Declaration fault")
 
 // Type Definitions and JVM command related Functions
 #include "jvmLangTypesFunctions.h"
@@ -93,7 +95,8 @@ asmt: T_id expr {
   insertSTORE($2.type,lookup_position(symbolTable,$1));
 };
 
-expr: T_num {$$.type = type_integer; pushInteger(atoi($1));}
+expr: '(' expr ')' {$$.type = $2.type;}
+  | T_num {$$.type = type_integer; pushInteger(atoi($1));}
   | T_real {$$.type = type_real; insertLDC($1);}
   | T_id {
       if (!($$.type = lookup_type(symbolTable,$1))) {
@@ -118,20 +121,27 @@ expr: T_num {$$.type = type_integer; pushInteger(atoi($1));}
       insertOPERATION($$.type,"div");
     }
   | T_id '+' '+' {
-      $$.type = lookup_type(symbolTable,$1);
-      if ($$.type == type_integer) {
-        int position = lookup_position(symbolTable,$1);
-        insertLOAD($$.type, position);
-        insertIINC(position, 1);
+      if (!($$.type = lookup_type(symbolTable,$1))) {
+        ERR_VAR_MISSING($1,line);
       }
+      int position = lookup_position(symbolTable,$1);
+      insertLOAD($$.type, position);
+      if ($$.type == type_integer)
+        insertIINC(position, 1);
+      else if ($$.type == type_real)
+        insertFINC(position, 1.0);
     }
   | '+' '+' T_id {
-      $$.type = lookup_type(symbolTable,$3);
-      if ($$.type == type_integer) {
-        int position = lookup_position(symbolTable,$3);
-        insertIINC(position, 1);
-        insertLOAD($$.type, position);
+      if (!($$.type = lookup_type(symbolTable,$3))) {
+        ERR_VAR_MISSING($3,line);
       }
+      int position = lookup_position(symbolTable,$3);
+      if ($$.type == type_integer)
+        insertIINC(position, 1);
+      else if ($$.type == type_real) {
+        insertFINC(position, 1.0);
+      }
+      insertLOAD($$.type, position);
     }
   | "int" expr {
       $$.type = type_integer;
@@ -165,8 +175,7 @@ expr: T_num {$$.type = type_integer; pushInteger(atoi($1));}
       $$.type = typeDefinition($4.type,$7.type);
       backpatch($1.nextLbl,currentLabel());
       insertLabel(Label());
-    }
-  | '(' expr ')' {$$.type = $2.type;};
+    };
 
 bool: expr relop expr {
   typeDefinition($1.type, $3.type);
@@ -188,12 +197,20 @@ relop: '>' 	{$$=OP_GT;}
 
 %%
 
+void insertFINC(int position, double value) {
+  char str_value[MAX_INST_LEN];
+  sprintf(str_value, "%f", value);
 
+  insertLOAD(type_real, position);
+  insertLDC(str_value);
+  insertOPERATION(type_real, "add");
+  insertSTORE(type_real,position);
+}
 
 /* The usual yyerror */
 int yyerror (const char * msg)
 {
-  fprintf(stderr, "PARSE ERROR: %s.on line %d.\n ", msg,line);
+  fprintf(stderr, "PARSE ERROR: %s on line %d.\n", msg,line);
   no_errors++;
 }
 
@@ -229,5 +246,6 @@ int main(int argc, char **argv ){
       fprintf(stderr,"No Code Generated.\n");}
    print_symbol_table(symbolTable); /* uncomment for debugging. */
 
-  return result;
+  /* Return non-zero if there were any errors, so that compile_and_run won't run previous code*/
+  return result || no_errors;
 }

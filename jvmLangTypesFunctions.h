@@ -11,6 +11,8 @@ typedef enum {type_error, type_integer, type_real, type_boolean, type_void, type
 // These are not token declarations but used internally in the parser.
 typedef enum {OP_GT, OP_LT, OP_EQ} RelationType;
 
+#define MAX_INST_LEN 200
+
 // Function Declarations
 // Types
 ParType typeDefinition(ParType Arg1, ParType Arg2);
